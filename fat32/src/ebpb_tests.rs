@@ -17,8 +17,8 @@ fn test_ebpb_data() {
     ebpb1.read_exact(&mut data[..512]).expect("read resource data");
     ebpb2.read_exact(&mut data[512..]).expect("read resource data");
 
-    let ebpb1 = BiosParameterBlock::from(Cursor::new(&mut data[..]), 0).expect("valid EBPB");
-    let ebpb2 = BiosParameterBlock::from(Cursor::new(&mut data[..]), 1).expect("valid EBPB");
+    let ebpb1 = BiosParameterBlock::from(&mut Cursor::new(&mut data[..]), 0).expect("valid EBPB");
+    let ebpb2 = BiosParameterBlock::from(&mut Cursor::new(&mut data[..]), 1).expect("valid EBPB");
 
     println!("ebpb1:\n{:#x?}", ebpb1);
     println!("ebpb2:\n{:#x?}", ebpb2);

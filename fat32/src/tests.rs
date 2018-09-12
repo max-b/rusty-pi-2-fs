@@ -67,11 +67,11 @@ fn check_mbr_size() {
 #[test]
 fn check_mbr_signature() {
     let mut data = [0u8; 512];
-    let e = MasterBootRecord::from(Cursor::new(&mut data[..])).unwrap_err();
+    let e = MasterBootRecord::from(&mut Cursor::new(&mut data[..])).unwrap_err();
     expect_variant!(e, ::mbr::Error::BadSignature);
 
     data[510..].copy_from_slice(&[0x55, 0xAA]);
-    MasterBootRecord::from(Cursor::new(&mut data[..])).unwrap();
+    MasterBootRecord::from(&mut Cursor::new(&mut data[..])).unwrap();
 }
 
 #[test]
@@ -82,12 +82,12 @@ fn check_mbr_boot_indicator() {
     for i in 0..4usize {
         data[446 + (i.saturating_sub(1) * 16)] = 0;
         data[446 + (i * 16)] = 0xFF;
-        let e = MasterBootRecord::from(Cursor::new(&mut data[..])).unwrap_err();
+        let e = MasterBootRecord::from(&mut Cursor::new(&mut data[..])).unwrap_err();
         expect_variant!(e, ::mbr::Error::UnknownBootIndicator(p) if p == i as u8);
     }
 
     data[446 + (3 * 16)] = 0;
-    MasterBootRecord::from(Cursor::new(&mut data[..])).unwrap();
+    MasterBootRecord::from(&mut Cursor::new(&mut data[..])).unwrap();
 }
 
 #[test]
@@ -95,7 +95,7 @@ fn test_mbr() {
     let mut mbr = resource!("mbr.img");
     let mut data = [0u8; 512];
     mbr.read_exact(&mut data).expect("read resource data");
-    MasterBootRecord::from(Cursor::new(&mut data[..])).expect("valid MBR");
+    MasterBootRecord::from(&mut Cursor::new(&mut data[..])).expect("valid MBR");
 }
 
 #[test]
@@ -108,10 +108,10 @@ fn check_ebpb_signature() {
     let mut data = [0u8; 1024];
     data[510..512].copy_from_slice(&[0x55, 0xAA]);
 
-    let e = BiosParameterBlock::from(Cursor::new(&mut data[..]), 1).unwrap_err();
+    let e = BiosParameterBlock::from(&mut Cursor::new(&mut data[..]), 1).unwrap_err();
     expect_variant!(e, ::vfat::Error::BadSignature);
 
-    BiosParameterBlock::from(Cursor::new(&mut data[..]), 0).unwrap();
+    BiosParameterBlock::from(&mut Cursor::new(&mut data[..]), 0).unwrap();
 }
 
 #[test]
@@ -123,8 +123,8 @@ fn test_ebpb() {
     ebpb1.read_exact(&mut data[..512]).expect("read resource data");
     ebpb2.read_exact(&mut data[512..]).expect("read resource data");
 
-    BiosParameterBlock::from(Cursor::new(&mut data[..]), 0).expect("valid EBPB");
-    BiosParameterBlock::from(Cursor::new(&mut data[..]), 1).expect("valid EBPB");
+    BiosParameterBlock::from(&mut Cursor::new(&mut data[..]), 0).expect("valid EBPB");
+    BiosParameterBlock::from(&mut Cursor::new(&mut data[..]), 1).expect("valid EBPB");
 }
 
 #[test]

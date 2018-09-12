@@ -1,4 +1,4 @@
-use std::{io, fmt};
+use std::{io, fmt, cmp};
 use std::collections::HashMap;
 
 use traits::BlockDevice;
@@ -81,7 +81,31 @@ impl CachedDevice {
     ///
     /// Returns an error if there is an error reading the sector from the disk.
     pub fn get_mut(&mut self, sector: u64) -> io::Result<&mut [u8]> {
-        unimplemented!("CachedDevice::get_mut()")
+
+        if self.cache.get(&sector).is_none() {
+            let data_bytes = self.read_sector_from_disk(sector)?;
+            self.cache.insert(sector, CacheEntry {
+                data: data_bytes,
+                dirty: true
+            });
+        }
+
+        let cache = self.cache.get_mut(&sector).unwrap();
+        cache.dirty = true;
+
+        Ok(&mut cache.data[..])
+    }
+
+    fn read_sector_from_disk(&mut self, sector: u64) -> io::Result<Vec<u8>> {
+        let (physical_sector, factor) = self.virtual_to_physical(sector);
+        let mut bytes_read = vec![0; self.partition.sector_size as usize];
+        let mut sector_bytes = vec![0; self.device.sector_size() as usize];
+        for i in 0..factor {
+            (*self.device).read_sector(physical_sector + i, &mut sector_bytes[..])?;
+            bytes_read[(i * self.device.sector_size()) as usize..].copy_from_slice(&sector_bytes[..]);
+        }
+
+        Ok(bytes_read)
     }
 
     /// Returns a reference to the cached sector `sector`. If the sector is not
@@ -91,12 +115,32 @@ impl CachedDevice {
     ///
     /// Returns an error if there is an error reading the sector from the disk.
     pub fn get(&mut self, sector: u64) -> io::Result<&[u8]> {
-        unimplemented!("CachedDevice::get()")
+        if self.cache.get(&sector).is_none() {
+            let data_bytes = self.read_sector_from_disk(sector)?;
+            self.cache.insert(sector, CacheEntry {
+                data: data_bytes,
+                dirty: false
+            });
+        }
+
+        // TODO: Is there a better way to get a reference to the above?
+        Ok(&self.cache.get(&sector).as_ref().unwrap().data[..])
     }
 }
 
 // FIXME: Implement `BlockDevice` for `CacheDevice`. The `read_sector` and
 // `write_sector` methods should only read/write from/to cached sectors.
+impl BlockDevice for CachedDevice {
+    fn read_sector(&mut self, n: u64, buf: &mut [u8]) -> io::Result<usize> {
+        let amount_to_read = cmp::min(self.partition.sector_size as usize, buf.len());
+        buf.copy_from_slice(&(self.get(n)?)[..amount_to_read]);
+        Ok(amount_to_read)
+    }
+
+    fn write_sector(&mut self, n: u64, buf: &[u8]) -> io::Result<usize> {
+        unimplemented!()
+    }
+}
 
 impl fmt::Debug for CachedDevice {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

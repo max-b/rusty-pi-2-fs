@@ -15,21 +15,21 @@ pub struct CHS {
 #[repr(C, packed)]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct PartitionEntry {
-    boot_indicator_flag: u8,
-    starting_chs: CHS,
-    partition_type: u8,
-    ending_chs: CHS,
-    relative_sector: u32,
-    total_sectors: u32,
+    pub boot_indicator_flag: u8,
+    pub starting_chs: CHS,
+    pub partition_type: u8,
+    pub ending_chs: CHS,
+    pub relative_sector: u32,
+    pub total_sectors: u32,
 }
 
 /// The master boot record (MBR).
 #[repr(C, packed)]
 pub struct MasterBootRecord {
-    mbr_bootstrap: [u8; 436],
-    disk_id: [u8; 10],
-    partition_table_entries: [PartitionEntry; 4],
-    bootsector_signature: [u8; 2],
+    pub mbr_bootstrap: [u8; 436],
+    pub disk_id: [u8; 10],
+    pub partition_table_entries: [PartitionEntry; 4],
+    pub bootsector_signature: [u8; 2],
 }
 
 #[derive(Debug)]
@@ -51,7 +51,7 @@ impl MasterBootRecord {
     /// Returns `UnknownBootIndicator(n)` if partition `n` contains an invalid
     /// boot indicator. Returns `Io(err)` if the I/O error `err` occured while
     /// reading the MBR.
-    pub fn from<T: BlockDevice>(mut device: T) -> Result<MasterBootRecord, Error> {
+    pub fn from<T: BlockDevice>(mut device: &mut T) -> Result<MasterBootRecord, Error> {
         let mut mbr_sector = vec![0u8; device.sector_size() as usize];
         
         if let Err(err) = device.read_sector(0, &mut mbr_sector[..]) {
