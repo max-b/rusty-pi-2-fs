@@ -1,8 +1,10 @@
-#![feature(decl_macro, conservative_impl_trait)]
+#![feature(decl_macro)]
 #![allow(safe_packed_borrows)]
 
 #[cfg(not(target_endian="little"))]
 compile_error!("only little endian platforms supported");
+
+extern crate byteorder;
 
 #[cfg(test)]
 mod tests;
