@@ -20,7 +20,7 @@ macro expect_variant($e:expr, $variant:pat $(if $($cond:tt)*)*) {
     }
 }
 
-macro resource($name:expr) {{
+pub macro resource($name:expr) {{
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../files/resources/", $name);
     match ::std::fs::File::open(path) {
         Ok(file) => file,

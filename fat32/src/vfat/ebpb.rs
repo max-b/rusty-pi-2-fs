@@ -6,35 +6,35 @@ use byteorder::{ByteOrder, LittleEndian};
 
 #[repr(C, packed)]
 pub struct BiosParameterBlock {
-    assembly_block: [u8; 3],
-    oem_id: [u8; 8],
-    bytes_per_sector: u16,
-    sectors_per_cluster: u8,
-    reserved_sectors: u16,
-    num_fats: u8,
-    max_dir_entries: u16,
-    total_logical_sectors_small: u16,
-    fat_id: u8,
-    _sectors_per_fat16: u16,
-    sectors_per_track: u16,
-    num_heads: u16,
-    num_hidden_sectors: u32,
-    total_logical_sectors_large: u32,
-    sectors_per_fat: u32,
-    flags: u16,
-    fat_version: [u8; 2],
-    root_cluster_num: u32,
-    fs_info_sector_num: u16,
-    backup_boot_sector_num: u16,
-    _r: [u8; 12],
-    drive_num: u8,
-    nt_flags: u8,
-    signature: u8,
-    volume_id: u32,
-    volume_label_string: [u8; 11], // TODO: replace with string?
-    system_id_string: [u8; 8],
-    boot_code: [u8; 420],
-    bootable_partition_signature: [u8; 2],
+    pub assembly_block: [u8; 3],
+    pub oem_id: [u8; 8],
+    pub bytes_per_sector: u16,
+    pub sectors_per_cluster: u8,
+    pub reserved_sectors: u16,
+    pub num_fats: u8,
+    pub max_dir_entries: u16,
+    pub total_logical_sectors_small: u16,
+    pub fat_id: u8,
+    pub _sectors_per_fat16: u16,
+    pub sectors_per_track: u16,
+    pub num_heads: u16,
+    pub num_hidden_sectors: u32,
+    pub total_logical_sectors_large: u32,
+    pub sectors_per_fat: u32,
+    pub flags: u16,
+    pub fat_version: [u8; 2],
+    pub root_cluster_num: u32,
+    pub fs_info_sector_num: u16,
+    pub backup_boot_sector_num: u16,
+    pub _r: [u8; 12],
+    pub drive_num: u8,
+    pub nt_flags: u8,
+    pub signature: u8,
+    pub volume_id: u32,
+    pub volume_label_string: [u8; 11], // TODO: replace with string?
+    pub system_id_string: [u8; 8],
+    pub boot_code: [u8; 420],
+    pub bootable_partition_signature: [u8; 2],
 }
 
 impl BiosParameterBlock {
@@ -125,7 +125,7 @@ impl fmt::Debug for BiosParameterBlock {
             .field("volume_id", &self.volume_id)
             .field("signature", &self.signature)
             .field("signature", &self.signature)
-            .field("volume_label_string", &self.volume_label_string)
+            .field("volume_label_string", &std::str::from_utf8(&self.volume_label_string).unwrap())
             .field("bootable_partition_signature", &self.bootable_partition_signature)
             .finish()
     }
