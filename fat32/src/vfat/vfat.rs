@@ -1,13 +1,13 @@
-use std::io;
-use std::path::Path;
-use std::mem::size_of;
 use std::cmp::min;
+use std::io;
+use std::mem::size_of;
+use std::path::Path;
 
 use byteorder::{ByteOrder, LittleEndian};
 use mbr::MasterBootRecord;
-use vfat::{Shared, Cluster, File, Dir, Entry, FatEntry, Error, Status};
+use traits::{BlockDevice, FileSystem};
 use vfat::{BiosParameterBlock, CachedDevice, Partition};
-use traits::{FileSystem, BlockDevice};
+use vfat::{Cluster, Dir, Entry, Error, FatEntry, File, Shared, Status};
 
 const FAT_ENTRY_SIZE: u16 = 4;
 
@@ -24,12 +24,13 @@ pub struct VFat {
 
 impl VFat {
     pub fn from<T>(mut device: T) -> Result<Shared<VFat>, Error>
-        where T: BlockDevice + 'static
+    where
+        T: BlockDevice + 'static,
     {
         let mbr = MasterBootRecord::from(&mut device)?;
         let bpb_offset = mbr.get_fat_partition_offset();
         if bpb_offset.is_none() {
-            return Err(Error::NotFound)
+            return Err(Error::NotFound);
         }
 
         let bpb = BiosParameterBlock::from(&mut device, bpb_offset.unwrap() as u64)?;
@@ -38,27 +39,28 @@ impl VFat {
                 device,
                 Partition {
                     start: (bpb_offset.unwrap() + 1) as u64,
-                    sector_size: bpb.bytes_per_sector as u64
-                }),
+                    sector_size: bpb.bytes_per_sector as u64,
+                },
+            ),
             bytes_per_sector: bpb.bytes_per_sector as u16,
             sectors_per_cluster: bpb.sectors_per_cluster,
             sectors_per_fat: bpb.sectors_per_fat as u32,
             fat_start_sector: bpb.reserved_sectors as u64,
-            data_start_sector:
-                (bpb.sectors_per_fat as u64) * (bpb.num_fats as u64) +
-                (bpb.reserved_sectors as u64),
-            root_dir_cluster: Cluster::from(bpb.root_cluster_num)
+            data_start_sector: (bpb.sectors_per_fat as u64) * (bpb.num_fats as u64)
+                + (bpb.reserved_sectors as u64),
+            root_dir_cluster: Cluster::from(bpb.root_cluster_num),
         }))
     }
 
     /// A method to read from an offset of a cluster into a buffer
     fn read_cluster(
-       &mut self,
-       cluster: Cluster,
-       // offset: usize, TODO: WAT?
-       buf: &mut [u8]
+        &mut self,
+        cluster: Cluster,
+        // offset: usize, TODO: WAT?
+        buf: &mut [u8],
     ) -> io::Result<usize> {
-        let start_read_sector = self.data_start_sector as u64 + cluster.0 as u64 * self.sectors_per_cluster as u64;
+        let start_read_sector =
+            self.data_start_sector as u64 + cluster.0 as u64 * self.sectors_per_cluster as u64;
         self.device.read_sector(start_read_sector, &mut buf[..])
     }
 
@@ -67,11 +69,7 @@ impl VFat {
     //  * A method to read all of the clusters chained from a starting cluster
     //    into a vector.
     //
-    pub fn read_chain(
-        &mut self,
-        start: Cluster,
-        buf: &mut Vec<u8>
-    ) -> io::Result<usize> {
+    pub fn read_chain(&mut self, start: Cluster, buf: &mut Vec<u8>) -> io::Result<usize> {
         let mut cluster_cursor = start;
         let mut bytes_read = 0usize;
 
@@ -80,28 +78,26 @@ impl VFat {
             cluster_cursor = match fat_entry.status() {
                 Status::Data(next) => {
                     buf.resize_default(
-                        buf.len() +
-                        self.bytes_per_sector as usize *
-                        self.sectors_per_cluster as usize);
-                    bytes_read += self.read_cluster(
-                        cluster_cursor, &mut buf[bytes_read..])?;
+                        buf.len()
+                            + self.bytes_per_sector as usize * self.sectors_per_cluster as usize,
+                    );
+                    bytes_read += self.read_cluster(cluster_cursor, &mut buf[bytes_read..])?;
                     next
-                },
+                }
                 Status::Eoc(_) => {
                     buf.resize_default(
-                        buf.len() +
-                        self.bytes_per_sector as usize *
-                        self.sectors_per_cluster as usize);
-                    bytes_read += self.read_cluster(
-                        cluster_cursor, &mut buf[bytes_read..])?;
+                        buf.len()
+                            + self.bytes_per_sector as usize * self.sectors_per_cluster as usize,
+                    );
+                    bytes_read += self.read_cluster(cluster_cursor, &mut buf[bytes_read..])?;
 
                     return Ok(bytes_read);
                 }
                 _ => {
-                    return Err(
-                        io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "Fat entry is Free/Reserved/Bad"));
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "Fat entry is Free/Reserved/Bad",
+                    ));
                 }
             }
         }
@@ -139,13 +135,16 @@ impl<'a> FileSystem for &'a Shared<VFat> {
     }
 
     fn create_dir<P>(self, _path: P, _parents: bool) -> io::Result<Self::Dir>
-        where P: AsRef<Path>
+    where
+        P: AsRef<Path>,
     {
         unimplemented!("read only file system")
     }
 
     fn rename<P, Q>(self, _from: P, _to: Q) -> io::Result<()>
-        where P: AsRef<Path>, Q: AsRef<Path>
+    where
+        P: AsRef<Path>,
+        Q: AsRef<Path>,
     {
         unimplemented!("read only file system")
     }

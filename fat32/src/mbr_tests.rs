@@ -4,9 +4,9 @@ use std::io::prelude::*;
 use std::io::Cursor;
 use std::path::Path;
 
-use mbr::{MasterBootRecord, CHS, PartitionEntry};
-use traits::*;
+use mbr::{MasterBootRecord, PartitionEntry, CHS};
 use tests;
+use traits::*;
 
 #[test]
 fn test_mbr_data() {

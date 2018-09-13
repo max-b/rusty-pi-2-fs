@@ -1,25 +1,25 @@
-use std::{io, fmt, cmp};
 use std::collections::HashMap;
+use std::{cmp, fmt, io};
 
 use traits::BlockDevice;
 
 #[derive(Debug)]
 struct CacheEntry {
     data: Vec<u8>,
-    dirty: bool
+    dirty: bool,
 }
 
 pub struct Partition {
     /// The physical sector where the partition begins.
     pub start: u64,
     /// The size, in bytes, of a logical sector in the partition.
-    pub sector_size: u64
+    pub sector_size: u64,
 }
 
 pub struct CachedDevice {
     device: Box<BlockDevice>,
     cache: HashMap<u64, CacheEntry>,
-    partition: Partition
+    partition: Partition,
 }
 
 impl CachedDevice {
@@ -43,14 +43,15 @@ impl CachedDevice {
     ///
     /// Panics if the partition's sector size is < the device's sector size.
     pub fn new<T>(device: T, partition: Partition) -> CachedDevice
-        where T: BlockDevice + 'static
+    where
+        T: BlockDevice + 'static,
     {
         assert!(partition.sector_size >= device.sector_size());
 
         CachedDevice {
             device: Box::new(device),
             cache: HashMap::new(),
-            partition: partition
+            partition: partition,
         }
     }
 
@@ -81,13 +82,15 @@ impl CachedDevice {
     ///
     /// Returns an error if there is an error reading the sector from the disk.
     pub fn get_mut(&mut self, sector: u64) -> io::Result<&mut [u8]> {
-
         if self.cache.get(&sector).is_none() {
             let data_bytes = self.read_sector_from_disk(sector)?;
-            self.cache.insert(sector, CacheEntry {
-                data: data_bytes,
-                dirty: true
-            });
+            self.cache.insert(
+                sector,
+                CacheEntry {
+                    data: data_bytes,
+                    dirty: true,
+                },
+            );
         }
 
         let cache = self.cache.get_mut(&sector).unwrap();
@@ -102,7 +105,8 @@ impl CachedDevice {
         let mut sector_bytes = vec![0; self.device.sector_size() as usize];
         for i in 0..factor {
             (*self.device).read_sector(physical_sector + i, &mut sector_bytes[..])?;
-            bytes_read[(i * self.device.sector_size()) as usize..].copy_from_slice(&sector_bytes[..]);
+            bytes_read[(i * self.device.sector_size()) as usize..]
+                .copy_from_slice(&sector_bytes[..]);
         }
 
         Ok(bytes_read)
@@ -117,10 +121,13 @@ impl CachedDevice {
     pub fn get(&mut self, sector: u64) -> io::Result<&[u8]> {
         if self.cache.get(&sector).is_none() {
             let data_bytes = self.read_sector_from_disk(sector)?;
-            self.cache.insert(sector, CacheEntry {
-                data: data_bytes,
-                dirty: false
-            });
+            self.cache.insert(
+                sector,
+                CacheEntry {
+                    data: data_bytes,
+                    dirty: false,
+                },
+            );
         }
 
         // TODO: Is there a better way to get a reference to the above?

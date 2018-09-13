@@ -4,7 +4,7 @@
 #![feature(vec_resize_default)]
 #![feature(nll)]
 
-#[cfg(not(target_endian="little"))]
+#[cfg(not(target_endian = "little"))]
 compile_error!("only little endian platforms supported");
 
 extern crate byteorder;
@@ -22,7 +22,7 @@ mod ebpb_tests;
 mod mbr;
 mod util;
 
-pub mod vfat;
 pub mod traits;
+pub mod vfat;
 
 pub use mbr::*;

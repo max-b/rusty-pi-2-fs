@@ -22,7 +22,7 @@ pub struct Attributes(pub u8);
 #[derive(Default, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Timestamp {
     pub date: Date,
-    pub time: Time
+    pub time: Time,
 }
 
 /// Metadata for a directory entry.
@@ -76,7 +76,10 @@ impl traits::Metadata for Metadata {
     }
 
     fn accessed(&self) -> Self::Timestamp {
-        Timestamp { date: self.accessed, time: Time(0) }
+        Timestamp {
+            date: self.accessed,
+            time: Time(0),
+        }
     }
 
     fn modified(&self) -> Self::Timestamp {

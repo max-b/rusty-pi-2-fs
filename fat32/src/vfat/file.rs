@@ -1,14 +1,14 @@
-use std::cmp::{min, max};
+use std::cmp::{max, min};
 use std::io::{self, SeekFrom};
 
 use traits;
-use vfat::{VFat, Shared, Cluster, Metadata};
+use vfat::{Cluster, Metadata, Shared, VFat};
 
 #[derive(Debug)]
 pub struct File {
     pub metadata: Metadata,
     pub start_cluster: Cluster,
-    pub vfat: Shared<VFat>
+    pub vfat: Shared<VFat>,
 }
 
 // FIXME: Implement `traits::File` (and its supertraits) for `File`.
@@ -33,7 +33,6 @@ impl io::Seek for File {
 }
 
 impl traits::File for File {
-
     fn sync(&mut self) -> io::Result<()> {
         unimplemented!()
     }

@@ -1,8 +1,8 @@
 use std::fmt;
 
+use byteorder::{ByteOrder, LittleEndian};
 use traits::BlockDevice;
 use vfat::Error;
-use byteorder::{ByteOrder, LittleEndian};
 
 #[repr(C, packed)]
 pub struct BiosParameterBlock {
@@ -46,7 +46,7 @@ impl BiosParameterBlock {
     /// If the EBPB signature is invalid, returns an error of `BadSignature`.
     pub fn from<T: BlockDevice>(
         mut device: &mut T,
-        sector: u64
+        sector: u64,
     ) -> Result<BiosParameterBlock, Error> {
         let mut sector_bytes = vec![0u8; device.sector_size() as usize];
         if let Err(err) = device.read_sector(sector, &mut sector_bytes[..]) {
@@ -125,8 +125,12 @@ impl fmt::Debug for BiosParameterBlock {
             .field("volume_id", &self.volume_id)
             .field("signature", &self.signature)
             .field("signature", &self.signature)
-            .field("volume_label_string", &std::str::from_utf8(&self.volume_label_string).unwrap())
-            .field("bootable_partition_signature", &self.bootable_partition_signature)
-            .finish()
+            .field(
+                "volume_label_string",
+                &std::str::from_utf8(&self.volume_label_string).unwrap(),
+            ).field(
+                "bootable_partition_signature",
+                &self.bootable_partition_signature,
+            ).finish()
     }
 }

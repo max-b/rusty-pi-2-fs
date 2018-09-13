@@ -1,7 +1,7 @@
 use std::{fmt, io};
 
-use traits::BlockDevice;
 use byteorder::{ByteOrder, LittleEndian};
+use traits::BlockDevice;
 
 #[repr(C, packed)]
 #[derive(Copy, Clone, Debug, Default)]
@@ -53,7 +53,7 @@ impl MasterBootRecord {
     /// reading the MBR.
     pub fn from<T: BlockDevice>(mut device: &mut T) -> Result<MasterBootRecord, Error> {
         let mut mbr_sector = vec![0u8; device.sector_size() as usize];
-        
+
         if let Err(err) = device.read_sector(0, &mut mbr_sector[..]) {
             return Err(Error::Io(err));
         }
@@ -68,7 +68,10 @@ impl MasterBootRecord {
         disk_id.copy_from_slice(&mbr_sector[436..446]);
 
         let mut partition_table_entries: [PartitionEntry; 4] = [Default::default(); 4];
-        for (i, partition_entry_bytes) in (&mbr_sector[446..device.sector_size() as usize - 2]).chunks(16).enumerate() {
+        for (i, partition_entry_bytes) in (&mbr_sector[446..device.sector_size() as usize - 2])
+            .chunks(16)
+            .enumerate()
+        {
             if ![0x00, 0x80].contains(&partition_entry_bytes[0]) {
                 return Err(Error::UnknownBootIndicator(i as u8));
             }
@@ -98,7 +101,7 @@ impl MasterBootRecord {
             mbr_bootstrap,
             disk_id,
             partition_table_entries,
-            bootsector_signature
+            bootsector_signature,
         })
     }
 
