@@ -101,6 +101,15 @@ impl MasterBootRecord {
             bootsector_signature
         })
     }
+
+    pub fn get_fat_partition_offset(&self) -> Option<u32> {
+        for partition in self.partition_table_entries.iter() {
+            if partition.partition_type == 0x0b || partition.partition_type == 0x0c {
+                return Some(partition.relative_sector);
+            }
+        }
+        None
+    }
 }
 
 impl fmt::Debug for MasterBootRecord {

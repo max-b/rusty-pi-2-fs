@@ -6,7 +6,9 @@ use vfat::{VFat, Shared, Cluster, Metadata};
 
 #[derive(Debug)]
 pub struct File {
-    // FIXME: Fill me in.
+    pub metadata: Metadata,
+    pub start_cluster: Cluster,
+    pub vfat: Shared<VFat>
 }
 
 // FIXME: Implement `traits::File` (and its supertraits) for `File`.
@@ -27,5 +29,32 @@ impl io::Seek for File {
     /// in an `InvalidInput` error.
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         unimplemented!("File::seek()")
+    }
+}
+
+impl traits::File for File {
+
+    fn sync(&mut self) -> io::Result<()> {
+        unimplemented!()
+    }
+
+    fn size(&self) -> u64 {
+        unimplemented!()
+    }
+}
+
+impl io::Write for File {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        unimplemented!()
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        unimplemented!()
+    }
+}
+
+impl io::Read for File {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        unimplemented!()
     }
 }
