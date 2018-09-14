@@ -106,9 +106,9 @@ impl CachedDevice {
         println!("physical sector: 0x{:x}, num_sectors: 0x{:x}, sector_size: 0x{:x}", physical_sector, num_sectors, sector_size);
         let mut data = vec![0; (sector_size * num_sectors) as usize];
         for i in 0..num_sectors {
-            let start = (i * sector_size) as usize;
+            let start = (i * self.device.sector_size()) as usize;
             self.device.read_sector(physical_sector + i,
-                                    &mut data[start..start + sector_size as usize])?;
+                                    &mut data[start..start + self.device.sector_size() as usize])?;
         }
 
         Ok(data)
@@ -142,6 +142,7 @@ impl CachedDevice {
 impl BlockDevice for CachedDevice {
     fn read_sector(&mut self, n: u64, buf: &mut [u8]) -> io::Result<usize> {
         let amount_to_read = cmp::min(self.partition.sector_size as usize, buf.len());
+        println!("amount_to_read: {}, sector_size: {}, buf.len(): {}", amount_to_read, self.partition.sector_size, buf.len());
         buf.copy_from_slice(&(self.get(n)?)[..amount_to_read]);
         Ok(amount_to_read)
     }

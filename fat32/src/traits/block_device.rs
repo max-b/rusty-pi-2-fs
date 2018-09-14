@@ -77,6 +77,7 @@ macro impl_for_read_write_seek($(<$($gen:tt),*>)* $T:path) {
             let to_read = ::std::cmp::min(sector_size as usize, buf.len());
             println!("Reading sector {:x}", n);
             println!("Reading at bytes {:x}", n * sector_size);
+            println!("to_read = {:x}", to_read);
             self.seek(io::SeekFrom::Start(n * sector_size))?;
             self.read_exact(&mut buf[..to_read])?;
             Ok(to_read)

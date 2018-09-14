@@ -51,7 +51,7 @@ impl VFat {
             device: CachedDevice::new(
                 device,
                 Partition {
-                    start: fat_start_sector,
+                    start: bpb_offset as u64,
                     sector_size: bpb.bytes_per_sector as u64,
                 },
             ),
@@ -72,8 +72,16 @@ impl VFat {
         buf: &mut [u8],
     ) -> io::Result<usize> {
         let start_read_sector =
-            self.data_start_sector as u64 + cluster.0 as u64 * self.sectors_per_cluster as u64;
-        self.device.read_sector(start_read_sector, &mut buf[..])
+            self.data_start_sector as u64 + (cluster.0.saturating_sub(2)) as u64 * self.sectors_per_cluster as u64;
+        let mut bytes_read = 0;
+        for i in 0..self.sectors_per_cluster {
+            let start_byte = (i as u16 * self.bytes_per_sector) as usize;
+            bytes_read += self.device.read_sector(
+                start_read_sector + i as u64, 
+                &mut buf[start_byte..start_byte + self.bytes_per_sector as usize]
+            )?;
+        }
+        Ok(bytes_read)
     }
 
     ///  * A method to read all of the clusters chained from a starting cluster
@@ -134,7 +142,10 @@ impl VFat {
         println!("Fat sector index updated: {:x}", self.fat_start_sector + fat_sector_index as u64);
         let fat_entries = self.device.get(self.fat_start_sector + fat_sector_index as u64)?;
 
+        // println!("fat_entries = {:#x?}", fat_entries);
         let idx = (fat_entry_index * FAT_ENTRY_SIZE as u32) as usize;
+        println!("idx = {:x}", idx);
+
         let raw_fat_entry = LittleEndian::read_u32(&fat_entries[idx..idx + 4]);
         Ok(FatEntry(raw_fat_entry))
     }
@@ -152,7 +163,7 @@ impl<'a> FileSystem for &'a Shared<VFat> {
             metadata: Default::default(),
         });
 
-        for file_component in path.as_ref().components().skip(1) {
+        for file_component in path.as_ref().components() {
             if let Component::Normal(name) = file_component {
 
                 match traits::Entry::as_dir(&current_dir) {

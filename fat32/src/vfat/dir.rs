@@ -102,6 +102,7 @@ impl DirIter {
             }
         }
         dir_entries.reverse();
+
         Ok(DirIter {
             vfat: dir.vfat.clone(),
             dir_entries,
@@ -117,21 +118,41 @@ impl Iterator for DirIter {
         if self.dir_entries.is_empty() {
             return None;
         }
-
+        
         let mut next = self.dir_entries.pop().unwrap();
+        let mut unknown = unsafe { next.unknown };
+        while unknown._bytes[0] == 0 || unknown._bytes[0] == 0x0E5 {
+            if unknown._bytes[0] == 0x0E5 {
+                next = match self.dir_entries.pop() {
+                    Some(val) => val,
+                    None => { return None; }
+                };
+                unknown = unsafe { next.unknown };
+            } else {
+                return None;
+            }
+        }
+
+        if unknown._bytes[0] == 0x00 {
+            return None;
+        } else if unknown._bytes[0] == 0xE5 {
+            return self.next();
+        }
+
         let mut name = String::new();
         let mut name_bytes = Vec::new();
         let mut is_lfn = false;
-        let mut unknown = unsafe { next.unknown };
 
         println!("unknown = {:#x?}", unknown);
+
         while unknown._bytes[11] == 0xF {
-            is_lfn = true;
             let lfn = unsafe { next.long_filename };
 
             println!("lfn = {:#x?}", lfn);
 
             if lfn.seq_no != 0xE5 {
+
+                is_lfn = true;
                 let mut tmp_buf = Vec::new();
                 tmp_buf.extend_from_slice(&lfn.chars1);
                 tmp_buf.extend_from_slice(&lfn.chars2);
@@ -149,6 +170,7 @@ impl Iterator for DirIter {
 
         let reg = unsafe { next.regular };
 
+        println!("reg = {:#x?}", reg);
         if is_lfn {
             let mut chars: Vec<u16> = name_bytes
                 .iter()
@@ -178,12 +200,16 @@ impl Iterator for DirIter {
             };
 
             name.push_str(&String::from_utf8_lossy(&reg.filename[..end]));
-            match reg.extension.iter().position(|b| *b != 0x00) {
+            match reg.extension.iter().position(|b| *b == 0x00 || *b == 0x20) {
                 Some(pos) => {
-                    name.push_str(&String::from_utf8_lossy(&reg.extension)[..pos]);
+                    if pos > 0 {
+                        name.push_str(".");
+                        name.push_str(&String::from_utf8_lossy(&reg.extension[..pos]));
+                    }
                 },
                 None => {
-                    name.push_str(&String::from_utf8_lossy(&reg.extension)[..]);
+                    name.push_str(".");
+                    name.push_str(&String::from_utf8_lossy(&reg.extension[..]));
                 }
             }
         }
@@ -202,18 +228,19 @@ impl Iterator for DirIter {
 
         println!("metadata: {:#x?}", metadata);
 
-        Some(match reg.attributes.0 {
-            0x10 => Entry::Dir(Dir {
+        if reg.attributes.0 & 0x10 != 0 {
+            Some(Entry::Dir(Dir {
                 metadata,
                 start_cluster: Cluster::from(start_cluster),
                 vfat: self.vfat.clone(),
-            }),
-            _ => Entry::File(File::new(
+            }))
+        } else {
+            Some(Entry::File(File::new(
                 metadata,
                 Cluster::from(start_cluster),
                 self.vfat.clone(),
-            )),
-        })
+            )))
+        }
     }
 }
 

@@ -237,7 +237,7 @@ fn hash_dir_recursive<P: AsRef<Path>>(
 ) -> ::std::fmt::Result {
     use std::fmt::Write;
 
-    println!("VFat = {:#x?}", vfat);
+    // println!("VFat = {:#x?}", vfat);
     let path = path.as_ref();
     println!("Path = {:?}", path);
     let dir = vfat.open_dir(path).expect("directory");
