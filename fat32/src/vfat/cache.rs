@@ -99,17 +99,19 @@ impl CachedDevice {
         Ok(&mut cache.data[..])
     }
 
-    fn read_sector_from_disk(&mut self, sector: u64) -> io::Result<Vec<u8>> {
-        let (physical_sector, factor) = self.virtual_to_physical(sector);
-        let mut bytes_read = vec![0; self.partition.sector_size as usize];
-        let mut sector_bytes = vec![0; self.device.sector_size() as usize];
-        for i in 0..factor {
-            (*self.device).read_sector(physical_sector + i, &mut sector_bytes[..])?;
-            bytes_read[(i * self.device.sector_size()) as usize..]
-                .copy_from_slice(&sector_bytes[..]);
+    fn read_sector_from_disk(&mut self, virt: u64) -> io::Result<Vec<u8>> {
+        println!("virt: 0x{:x}", virt);
+        let (physical_sector, num_sectors) = self.virtual_to_physical(virt);
+        let sector_size = self.partition.sector_size;
+        println!("physical sector: 0x{:x}, num_sectors: 0x{:x}, sector_size: 0x{:x}", physical_sector, num_sectors, sector_size);
+        let mut data = vec![0; (sector_size * num_sectors) as usize];
+        for i in 0..num_sectors {
+            let start = (i * sector_size) as usize;
+            self.device.read_sector(physical_sector + i,
+                                    &mut data[start..start + sector_size as usize])?;
         }
 
-        Ok(bytes_read)
+        Ok(data)
     }
 
     /// Returns a reference to the cached sector `sector`. If the sector is not

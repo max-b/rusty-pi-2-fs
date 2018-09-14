@@ -29,26 +29,37 @@ impl VFat {
         T: BlockDevice + 'static,
     {
         let mbr = MasterBootRecord::from(&mut device)?;
-        let bpb_offset = mbr.get_fat_partition_offset();
-        if bpb_offset.is_none() {
-            return Err(Error::NotFound);
-        }
+        println!("mbr: {:#x?}", mbr);
 
-        let bpb = BiosParameterBlock::from(&mut device, bpb_offset.unwrap() as u64)?;
+        let bpb_offset = match mbr.get_fat_partition_offset() {
+            None => {
+                return Err(Error::NotFound);
+            },
+            Some(offset) => offset
+        };
+
+        let bpb = BiosParameterBlock::from(&mut device, bpb_offset as u64)?;
+        println!("bpb: {:#x?}", bpb);
+
+        let fat_start_sector = bpb_offset as u64 + bpb.reserved_sectors as u64;
+
+        let data_start_sector = fat_start_sector + 
+            (bpb.sectors_per_fat as u64) * 
+            (bpb.num_fats as u64);
+
         Ok(Shared::new(VFat {
             device: CachedDevice::new(
                 device,
                 Partition {
-                    start: (bpb_offset.unwrap() + 1) as u64,
+                    start: fat_start_sector,
                     sector_size: bpb.bytes_per_sector as u64,
                 },
             ),
             bytes_per_sector: bpb.bytes_per_sector as u16,
             sectors_per_cluster: bpb.sectors_per_cluster,
             sectors_per_fat: bpb.sectors_per_fat as u32,
-            fat_start_sector: bpb.reserved_sectors as u64,
-            data_start_sector: (bpb.sectors_per_fat as u64) * (bpb.num_fats as u64)
-                + (bpb.reserved_sectors as u64),
+            fat_start_sector,
+            data_start_sector,
             root_dir_cluster: Cluster::from(bpb.root_cluster_num),
         }))
     }
@@ -73,13 +84,17 @@ impl VFat {
         let mut bytes_read = 0usize;
 
         loop {
+            println!("Cluster cursor = {:#x?}", cluster_cursor);
             let fat_entry = self.fat_entry(cluster_cursor)?;
+            println!("Fat entry = {:#x?}", fat_entry);
             cluster_cursor = match fat_entry.status() {
                 Status::Data(next) => {
+                    println!("Next = 0x{:x}", next.0);
                     buf.resize_default(
                         buf.len()
                             + self.bytes_per_sector as usize * self.sectors_per_cluster as usize,
                     );
+                    println!("Cluster cursor = {:#x?}", cluster_cursor);
                     bytes_read += self.read_cluster(cluster_cursor, &mut buf[bytes_read..])?;
                     next
                 }
@@ -113,7 +128,12 @@ impl VFat {
         // sector with entries 10-20 and we want sectore 12, this should be 2
         let fat_entry_index = cluster.0 % entries_per_sector;
 
-        let fat_entries = self.device.get(fat_sector_index.into())?;
+        println!("Fat sector index: {:#x?}", fat_sector_index);
+        println!("Fat entry index: {:#x?}", fat_entry_index);
+
+        println!("Fat sector index updated: {:x}", self.fat_start_sector + fat_sector_index as u64);
+        let fat_entries = self.device.get(self.fat_start_sector + fat_sector_index as u64)?;
+
         let idx = (fat_entry_index * FAT_ENTRY_SIZE as u32) as usize;
         let raw_fat_entry = LittleEndian::read_u32(&fat_entries[idx..idx + 4]);
         Ok(FatEntry(raw_fat_entry))
@@ -134,6 +154,7 @@ impl<'a> FileSystem for &'a Shared<VFat> {
 
         for file_component in path.as_ref().components().skip(1) {
             if let Component::Normal(name) = file_component {
+
                 match traits::Entry::as_dir(&current_dir) {
                     Some(ref dir) => {
                         current_dir = dir.find(name)?;
@@ -144,6 +165,7 @@ impl<'a> FileSystem for &'a Shared<VFat> {
                 }
             }
         }
+        println!("current_dir = {:#x?}", current_dir);
         Ok(current_dir)
     }
 

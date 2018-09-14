@@ -113,47 +113,71 @@ impl Iterator for DirIter {
     type Item = Entry;
 
     fn next(&mut self) -> Option<Entry> {
+        println!("== Next ==");
         if self.dir_entries.is_empty() {
             return None;
         }
 
         let mut next = self.dir_entries.pop().unwrap();
         let mut name = String::new();
+        let mut name_bytes = Vec::new();
         let mut is_lfn = false;
-        let unknown = unsafe { next.unknown };
+        let mut unknown = unsafe { next.unknown };
+
+        println!("unknown = {:#x?}", unknown);
         while unknown._bytes[11] == 0xF {
             is_lfn = true;
             let lfn = unsafe { next.long_filename };
-            let mut buf = Vec::new();
-            buf.extend_from_slice(&lfn.chars1);
-            buf.extend_from_slice(&lfn.chars2);
-            buf.extend_from_slice(&lfn.chars3);
 
-            let mut chars: Vec<u16> = buf
+            println!("lfn = {:#x?}", lfn);
+
+            if lfn.seq_no != 0xE5 {
+                let mut tmp_buf = Vec::new();
+                tmp_buf.extend_from_slice(&lfn.chars1);
+                tmp_buf.extend_from_slice(&lfn.chars2);
+                tmp_buf.extend_from_slice(&lfn.chars3);
+
+                tmp_buf.reverse();
+                name_bytes.extend_from_slice(&tmp_buf);
+            }
+
+            next = self.dir_entries.pop().unwrap();
+            unknown = unsafe { next.unknown };
+        }
+
+        name_bytes.reverse();
+
+        let reg = unsafe { next.regular };
+
+        if is_lfn {
+            let mut chars: Vec<u16> = name_bytes
                 .iter()
                 .skip(1)
                 .step_by(2)
-                .zip(buf.iter().step_by(2))
+                .zip(name_bytes.iter().step_by(2))
                 .map(|(first, second)| ((*first as u16) << 8) | (*second as u16))
                 .collect();
 
             let end = match chars.iter().position(|n| *n == 0 || *n == 0xFF) {
-                Some(n) => n + 1,
-                None => buf.len(),
+                Some(n) => n,
+                None => chars.len(),
             };
+
+            println!("chars = {:x?}", chars);
+            println!("end = {}", end);
 
             name.push_str(
                 &decode_utf16(&mut chars[..end].iter().cloned())
                     .map(|r| r.unwrap_or('_'))
                     .collect::<String>(),
             );
-            next = self.dir_entries.pop().unwrap();
-            let unknown = unsafe { next.unknown };
-        }
+        } else {
+            let end = match reg.filename.iter().position(|n| *n == 0 || *n == 0x20) {
+                Some(n) => n,
+                None => reg.filename.len(),
+            };
 
-        let reg = unsafe { next.regular };
-
-        if !is_lfn {
+            name.push_str(&String::from_utf8_lossy(&reg.filename[..end]));
             match reg.extension.iter().position(|b| *b != 0x00) {
                 Some(pos) => {
                     name.push_str(&String::from_utf8_lossy(&reg.extension)[..pos]);
@@ -164,6 +188,8 @@ impl Iterator for DirIter {
             }
         }
 
+        println!("name = {:?}", name);
+
         let start_cluster = ((reg.cluster_hi as u32) << 16) | (reg.cluster_lo as u32);
         let metadata = Metadata {
             name,
@@ -173,6 +199,8 @@ impl Iterator for DirIter {
             accessed: reg.accessed,
             last_modified: reg.last_modified,
         };
+
+        println!("metadata: {:#x?}", metadata);
 
         Some(match reg.attributes.0 {
             0x10 => Entry::Dir(Dir {

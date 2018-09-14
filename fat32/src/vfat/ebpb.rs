@@ -89,12 +89,12 @@ impl BiosParameterBlock {
             total_logical_sectors_small: LittleEndian::read_u16(&sector_bytes[19..21]),
             fat_id: sector_bytes[21],
             _sectors_per_fat16: 0u16,
-            sectors_per_track: LittleEndian::read_u16(&sector_bytes[22..24]),
-            num_heads: LittleEndian::read_u16(&sector_bytes[24..26]),
-            num_hidden_sectors: LittleEndian::read_u32(&sector_bytes[26..30]),
-            total_logical_sectors_large: LittleEndian::read_u32(&sector_bytes[30..34]),
-            sectors_per_fat: LittleEndian::read_u32(&sector_bytes[34..38]),
-            flags: LittleEndian::read_u16(&sector_bytes[38..40]),
+            sectors_per_track: LittleEndian::read_u16(&sector_bytes[24..26]),
+            num_heads: LittleEndian::read_u16(&sector_bytes[26..28]),
+            num_hidden_sectors: LittleEndian::read_u32(&sector_bytes[28..32]),
+            total_logical_sectors_large: LittleEndian::read_u32(&sector_bytes[32..36]),
+            sectors_per_fat: LittleEndian::read_u32(&sector_bytes[36..40]),
+            flags: LittleEndian::read_u16(&sector_bytes[40..42]),
             fat_version,
             root_cluster_num: LittleEndian::read_u32(&sector_bytes[44..48]),
             fs_info_sector_num: LittleEndian::read_u16(&sector_bytes[48..50]),
@@ -117,9 +117,10 @@ impl fmt::Debug for BiosParameterBlock {
         f.debug_struct("BiosParameterBlock")
             .field("oem_id", &self.oem_id)
             .field("bytes_per_sector", &self.bytes_per_sector)
+            .field("reserved_sectors", &self.reserved_sectors)
+            .field("sectors_per_fat", &self.sectors_per_fat)
             .field("sectors_per_cluster", &self.sectors_per_cluster)
             .field("num_fats", &self.num_fats)
-            .field("sectors_per_fat", &self.sectors_per_fat)
             .field("root_cluster_num", &self.root_cluster_num)
             .field("drive_num", &self.drive_num)
             .field("volume_id", &self.volume_id)
