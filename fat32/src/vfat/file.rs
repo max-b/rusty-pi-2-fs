@@ -30,6 +30,7 @@ impl File {
             None => {
                 let mut tmp_buf = Vec::new();
                 self.vfat.borrow_mut().read_chain(self.start_cluster, &mut tmp_buf)?;
+                self.data = Some(tmp_buf);
                 Ok(())
             }
         }
@@ -57,9 +58,11 @@ impl io::Seek for File {
             SeekFrom::Current(offset) => self.offset as i64 + offset
         };
 
-        if new_offset < 0 || new_offset > self.offset as i64 {
+        if new_offset < 0 || new_offset > self.metadata.size as i64 {
             return Err(io::Error::new(io::ErrorKind::InvalidInput, "seek is invalid"));
         }
+
+        self.offset = new_offset as u32;
 
         Ok(self.offset as u64)
     }
@@ -94,7 +97,13 @@ impl io::Read for File {
 
         let num_bytes_to_read = min(buf.len(), (self.metadata.size - self.offset) as usize);
 
-        buf.copy_from_slice(&self.data.as_ref().unwrap()[self.offset as usize..self.offset as usize + num_bytes_to_read]);
+        println!("metadata: {:?}", self.metadata);
+        // println!("data: {:#x?}", &self.data.as_ref().unwrap()[..100]);
+        println!("buf.len(): {:#?}", buf.len());
+
+        &buf[..num_bytes_to_read].copy_from_slice(&self.data.as_ref().unwrap()[self.offset as usize..self.offset as usize + num_bytes_to_read]);
+
+        io::Seek::seek(self, SeekFrom::Current(num_bytes_to_read as i64))?;
         Ok(num_bytes_to_read)
     }
 }

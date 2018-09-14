@@ -76,6 +76,7 @@ impl VFat {
         let mut bytes_read = 0;
         for i in 0..self.sectors_per_cluster {
             let start_byte = (i as u16 * self.bytes_per_sector) as usize;
+
             bytes_read += self.device.read_sector(
                 start_read_sector + i as u64, 
                 &mut buf[start_byte..start_byte + self.bytes_per_sector as usize]
