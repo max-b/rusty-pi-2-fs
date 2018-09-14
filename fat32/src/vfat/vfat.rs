@@ -1,6 +1,4 @@
-use std::cmp::min;
 use std::io;
-use std::mem::size_of;
 use std::path::{Path, Component};
 
 use traits;
@@ -29,7 +27,6 @@ impl VFat {
         T: BlockDevice + 'static,
     {
         let mbr = MasterBootRecord::from(&mut device)?;
-        println!("mbr: {:#x?}", mbr);
 
         let bpb_offset = match mbr.get_fat_partition_offset() {
             None => {
@@ -39,7 +36,6 @@ impl VFat {
         };
 
         let bpb = BiosParameterBlock::from(&mut device, bpb_offset as u64)?;
-        println!("bpb: {:#x?}", bpb);
 
         let fat_start_sector = bpb_offset as u64 + bpb.reserved_sectors as u64;
 
@@ -93,17 +89,13 @@ impl VFat {
         let mut bytes_read = 0usize;
 
         loop {
-            println!("Cluster cursor = {:#x?}", cluster_cursor);
             let fat_entry = self.fat_entry(cluster_cursor)?;
-            println!("Fat entry = {:#x?}", fat_entry);
             cluster_cursor = match fat_entry.status() {
                 Status::Data(next) => {
-                    println!("Next = 0x{:x}", next.0);
                     buf.resize_default(
                         buf.len()
                             + self.bytes_per_sector as usize * self.sectors_per_cluster as usize,
                     );
-                    println!("Cluster cursor = {:#x?}", cluster_cursor);
                     bytes_read += self.read_cluster(cluster_cursor, &mut buf[bytes_read..])?;
                     next
                 }
@@ -137,15 +129,9 @@ impl VFat {
         // sector with entries 10-20 and we want sectore 12, this should be 2
         let fat_entry_index = cluster.0 % entries_per_sector;
 
-        println!("Fat sector index: {:#x?}", fat_sector_index);
-        println!("Fat entry index: {:#x?}", fat_entry_index);
-
-        println!("Fat sector index updated: {:x}", self.fat_start_sector + fat_sector_index as u64);
         let fat_entries = self.device.get(self.fat_start_sector + fat_sector_index as u64)?;
 
-        // println!("fat_entries = {:#x?}", fat_entries);
         let idx = (fat_entry_index * FAT_ENTRY_SIZE as u32) as usize;
-        println!("idx = {:x}", idx);
 
         let raw_fat_entry = LittleEndian::read_u32(&fat_entries[idx..idx + 4]);
         Ok(FatEntry(raw_fat_entry))
@@ -177,7 +163,6 @@ impl<'a> FileSystem for &'a Shared<VFat> {
                 }
             }
         }
-        println!("current_dir = {:#x?}", current_dir);
         Ok(current_dir)
     }
 

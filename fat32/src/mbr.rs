@@ -51,7 +51,7 @@ impl MasterBootRecord {
     /// Returns `UnknownBootIndicator(n)` if partition `n` contains an invalid
     /// boot indicator. Returns `Io(err)` if the I/O error `err` occured while
     /// reading the MBR.
-    pub fn from<T: BlockDevice>(mut device: &mut T) -> Result<MasterBootRecord, Error> {
+    pub fn from<T: BlockDevice>(device: &mut T) -> Result<MasterBootRecord, Error> {
         let mut mbr_sector = vec![0u8; device.sector_size() as usize];
 
         if let Err(err) = device.read_sector(0, &mut mbr_sector[..]) {

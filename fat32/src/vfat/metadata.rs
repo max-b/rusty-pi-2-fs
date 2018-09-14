@@ -1,5 +1,3 @@
-use std::fmt;
-
 use traits;
 
 /// A date as represented in FAT32 on-disk structures.

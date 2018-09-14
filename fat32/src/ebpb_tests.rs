@@ -24,9 +24,6 @@ fn test_ebpb_data() {
     let ebpb1 = BiosParameterBlock::from(&mut Cursor::new(&mut data[..]), 0).expect("valid EBPB");
     let ebpb2 = BiosParameterBlock::from(&mut Cursor::new(&mut data[..]), 1).expect("valid EBPB");
 
-    println!("ebpb1:\n{:#x?}", ebpb1);
-    println!("ebpb2:\n{:#x?}", ebpb2);
-
     assert_eq!(
         std::str::from_utf8(&ebpb1.volume_label_string).unwrap(),
         "CS140E     "

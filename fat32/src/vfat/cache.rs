@@ -100,10 +100,8 @@ impl CachedDevice {
     }
 
     fn read_sector_from_disk(&mut self, virt: u64) -> io::Result<Vec<u8>> {
-        println!("virt: 0x{:x}", virt);
         let (physical_sector, num_sectors) = self.virtual_to_physical(virt);
         let sector_size = self.partition.sector_size;
-        println!("physical sector: 0x{:x}, num_sectors: 0x{:x}, sector_size: 0x{:x}", physical_sector, num_sectors, sector_size);
         let mut data = vec![0; (sector_size * num_sectors) as usize];
         for i in 0..num_sectors {
             let start = (i * self.device.sector_size()) as usize;
@@ -137,17 +135,14 @@ impl CachedDevice {
     }
 }
 
-// FIXME: Implement `BlockDevice` for `CacheDevice`. The `read_sector` and
-// `write_sector` methods should only read/write from/to cached sectors.
 impl BlockDevice for CachedDevice {
     fn read_sector(&mut self, n: u64, buf: &mut [u8]) -> io::Result<usize> {
         let amount_to_read = cmp::min(self.partition.sector_size as usize, buf.len());
-        println!("amount_to_read: {}, sector_size: {}, buf.len(): {}", amount_to_read, self.partition.sector_size, buf.len());
         buf.copy_from_slice(&(self.get(n)?)[..amount_to_read]);
         Ok(amount_to_read)
     }
 
-    fn write_sector(&mut self, n: u64, buf: &[u8]) -> io::Result<usize> {
+    fn write_sector(&mut self, _n: u64, _buf: &[u8]) -> io::Result<usize> {
         unimplemented!()
     }
 }

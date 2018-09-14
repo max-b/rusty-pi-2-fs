@@ -1,14 +1,13 @@
-use std::borrow::Cow;
 use std::char::decode_utf16;
 use std::ffi::OsStr;
-use std::{cmp, fmt, io, mem};
+use std::{fmt, io, mem};
 
 use traits;
-use util::VecExt;
-use vfat::{Attributes, Date, Metadata, Time, Timestamp};
+use vfat::{Attributes, Date, Metadata, Timestamp};
 use vfat::{Cluster, Entry, File, Shared, VFat};
 
 const BYTES_IN_ENTRY: usize = 32;
+const DIR_MASK: u8 = 0x10;
 
 pub struct Dir {
     pub metadata: Metadata,
@@ -114,7 +113,6 @@ impl Iterator for DirIter {
     type Item = Entry;
 
     fn next(&mut self) -> Option<Entry> {
-        println!("== Next ==");
         if self.dir_entries.is_empty() {
             return None;
         }
@@ -133,22 +131,12 @@ impl Iterator for DirIter {
             }
         }
 
-        if unknown._bytes[0] == 0x00 {
-            return None;
-        } else if unknown._bytes[0] == 0xE5 {
-            return self.next();
-        }
-
         let mut name = String::new();
         let mut name_bytes = Vec::new();
         let mut is_lfn = false;
 
-        println!("unknown = {:#x?}", unknown);
-
         while unknown._bytes[11] == 0xF {
             let lfn = unsafe { next.long_filename };
-
-            println!("lfn = {:#x?}", lfn);
 
             if lfn.seq_no != 0xE5 {
 
@@ -170,7 +158,6 @@ impl Iterator for DirIter {
 
         let reg = unsafe { next.regular };
 
-        println!("reg = {:#x?}", reg);
         if is_lfn {
             let mut chars: Vec<u16> = name_bytes
                 .iter()
@@ -184,9 +171,6 @@ impl Iterator for DirIter {
                 Some(n) => n,
                 None => chars.len(),
             };
-
-            println!("chars = {:x?}", chars);
-            println!("end = {}", end);
 
             name.push_str(
                 &decode_utf16(&mut chars[..end].iter().cloned())
@@ -214,8 +198,6 @@ impl Iterator for DirIter {
             }
         }
 
-        println!("name = {:?}", name);
-
         let start_cluster = ((reg.cluster_hi as u32) << 16) | (reg.cluster_lo as u32);
         let metadata = Metadata {
             name,
@@ -226,9 +208,7 @@ impl Iterator for DirIter {
             last_modified: reg.last_modified,
         };
 
-        println!("metadata: {:#x?}", metadata);
-
-        if reg.attributes.0 & 0x10 != 0 {
+        if reg.attributes.0 & DIR_MASK != 0 {
             Some(Entry::Dir(Dir {
                 metadata,
                 start_cluster: Cluster::from(start_cluster),

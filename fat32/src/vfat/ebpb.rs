@@ -45,7 +45,7 @@ impl BiosParameterBlock {
     ///
     /// If the EBPB signature is invalid, returns an error of `BadSignature`.
     pub fn from<T: BlockDevice>(
-        mut device: &mut T,
+        device: &mut T,
         sector: u64,
     ) -> Result<BiosParameterBlock, Error> {
         let mut sector_bytes = vec![0u8; device.sector_size() as usize];

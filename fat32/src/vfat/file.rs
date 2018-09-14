@@ -1,4 +1,4 @@
-use std::cmp::{max, min};
+use std::cmp::{min};
 use std::io::{self, SeekFrom};
 
 use traits;
@@ -79,7 +79,7 @@ impl traits::File for File {
 }
 
 impl io::Write for File {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+    fn write(&mut self, _buf: &[u8]) -> io::Result<usize> {
         unimplemented!()
     }
 
@@ -96,10 +96,6 @@ impl io::Read for File {
         }
 
         let num_bytes_to_read = min(buf.len(), (self.metadata.size - self.offset) as usize);
-
-        println!("metadata: {:?}", self.metadata);
-        // println!("data: {:#x?}", &self.data.as_ref().unwrap()[..100]);
-        println!("buf.len(): {:#?}", buf.len());
 
         &buf[..num_bytes_to_read].copy_from_slice(&self.data.as_ref().unwrap()[self.offset as usize..self.offset as usize + num_bytes_to_read]);
 
