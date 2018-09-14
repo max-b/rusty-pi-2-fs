@@ -70,8 +70,13 @@ impl Dir {
     pub fn find<P: AsRef<OsStr>>(&self, name: P) -> io::Result<Entry> {
         for entry in traits::Dir::entries(self)? {
             let name = match name.as_ref().to_str() {
-                None => { return Err(io::Error::new(io::ErrorKind::InvalidInput, "name not valid utf8")) },
-                Some(name) => name
+                None => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "name not valid utf8",
+                    ))
+                }
+                Some(name) => name,
             };
 
             if traits::Entry::name(&entry).eq_ignore_ascii_case(name) {
@@ -116,14 +121,16 @@ impl Iterator for DirIter {
         if self.dir_entries.is_empty() {
             return None;
         }
-        
+
         let mut next = self.dir_entries.pop().unwrap();
         let mut unknown = unsafe { next.unknown };
         while unknown._bytes[0] == 0 || unknown._bytes[0] == 0x0E5 {
             if unknown._bytes[0] == 0x0E5 {
                 next = match self.dir_entries.pop() {
                     Some(val) => val,
-                    None => { return None; }
+                    None => {
+                        return None;
+                    }
                 };
                 unknown = unsafe { next.unknown };
             } else {
@@ -139,7 +146,6 @@ impl Iterator for DirIter {
             let lfn = unsafe { next.long_filename };
 
             if lfn.seq_no != 0xE5 {
-
                 is_lfn = true;
                 let mut tmp_buf = Vec::new();
                 tmp_buf.extend_from_slice(&lfn.chars1);
@@ -190,7 +196,7 @@ impl Iterator for DirIter {
                         name.push_str(".");
                         name.push_str(&String::from_utf8_lossy(&reg.extension[..pos]));
                     }
-                },
+                }
                 None => {
                     name.push_str(".");
                     name.push_str(&String::from_utf8_lossy(&reg.extension[..]));

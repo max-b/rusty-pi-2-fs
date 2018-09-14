@@ -105,8 +105,10 @@ impl CachedDevice {
         let mut data = vec![0; (sector_size * num_sectors) as usize];
         for i in 0..num_sectors {
             let start = (i * self.device.sector_size()) as usize;
-            self.device.read_sector(physical_sector + i,
-                                    &mut data[start..start + self.device.sector_size() as usize])?;
+            self.device.read_sector(
+                physical_sector + i,
+                &mut data[start..start + self.device.sector_size() as usize],
+            )?;
         }
 
         Ok(data)

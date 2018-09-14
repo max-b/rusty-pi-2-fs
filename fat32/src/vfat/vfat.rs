@@ -1,9 +1,9 @@
 use std::io;
-use std::path::{Path, Component};
+use std::path::{Component, Path};
 
-use traits;
 use byteorder::{ByteOrder, LittleEndian};
 use mbr::MasterBootRecord;
+use traits;
 use traits::{BlockDevice, FileSystem};
 use vfat::{BiosParameterBlock, CachedDevice, Partition};
 use vfat::{Cluster, Dir, Entry, Error, FatEntry, File, Shared, Status};
@@ -31,17 +31,16 @@ impl VFat {
         let bpb_offset = match mbr.get_fat_partition_offset() {
             None => {
                 return Err(Error::NotFound);
-            },
-            Some(offset) => offset
+            }
+            Some(offset) => offset,
         };
 
         let bpb = BiosParameterBlock::from(&mut device, bpb_offset as u64)?;
 
         let fat_start_sector = bpb_offset as u64 + bpb.reserved_sectors as u64;
 
-        let data_start_sector = fat_start_sector + 
-            (bpb.sectors_per_fat as u64) * 
-            (bpb.num_fats as u64);
+        let data_start_sector =
+            fat_start_sector + (bpb.sectors_per_fat as u64) * (bpb.num_fats as u64);
 
         Ok(Shared::new(VFat {
             device: CachedDevice::new(
@@ -67,15 +66,15 @@ impl VFat {
         // offset: usize, TODO: WAT?
         buf: &mut [u8],
     ) -> io::Result<usize> {
-        let start_read_sector =
-            self.data_start_sector as u64 + (cluster.0.saturating_sub(2)) as u64 * self.sectors_per_cluster as u64;
+        let start_read_sector = self.data_start_sector as u64
+            + (cluster.0.saturating_sub(2)) as u64 * self.sectors_per_cluster as u64;
         let mut bytes_read = 0;
         for i in 0..self.sectors_per_cluster {
             let start_byte = (i as u16 * self.bytes_per_sector) as usize;
 
             bytes_read += self.device.read_sector(
-                start_read_sector + i as u64, 
-                &mut buf[start_byte..start_byte + self.bytes_per_sector as usize]
+                start_read_sector + i as u64,
+                &mut buf[start_byte..start_byte + self.bytes_per_sector as usize],
             )?;
         }
         Ok(bytes_read)
@@ -129,7 +128,9 @@ impl VFat {
         // sector with entries 10-20 and we want sectore 12, this should be 2
         let fat_entry_index = cluster.0 % entries_per_sector;
 
-        let fat_entries = self.device.get(self.fat_start_sector + fat_sector_index as u64)?;
+        let fat_entries = self
+            .device
+            .get(self.fat_start_sector + fat_sector_index as u64)?;
 
         let idx = (fat_entry_index * FAT_ENTRY_SIZE as u32) as usize;
 
@@ -152,13 +153,15 @@ impl<'a> FileSystem for &'a Shared<VFat> {
 
         for file_component in path.as_ref().components() {
             if let Component::Normal(name) = file_component {
-
                 match traits::Entry::as_dir(&current_dir) {
                     Some(ref dir) => {
                         current_dir = dir.find(name)?;
-                    },
+                    }
                     None => {
-                        return Err(io::Error::new(io::ErrorKind::InvalidInput, "tried to traverse through file."));
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidInput,
+                            "tried to traverse through file.",
+                        ));
                     }
                 }
             }
