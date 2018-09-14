@@ -1,8 +1,9 @@
 use std::cmp::min;
 use std::io;
 use std::mem::size_of;
-use std::path::Path;
+use std::path::{Path, Component};
 
+use traits;
 use byteorder::{ByteOrder, LittleEndian};
 use mbr::MasterBootRecord;
 use traits::{BlockDevice, FileSystem};
@@ -64,11 +65,9 @@ impl VFat {
         self.device.read_sector(start_read_sector, &mut buf[..])
     }
 
-    // TODO: The following methods may be useful here:
-    //
-    //  * A method to read all of the clusters chained from a starting cluster
-    //    into a vector.
-    //
+    ///  * A method to read all of the clusters chained from a starting cluster
+    ///    into a vector.
+    ///
     pub fn read_chain(&mut self, start: Cluster, buf: &mut Vec<u8>) -> io::Result<usize> {
         let mut cluster_cursor = start;
         let mut bytes_read = 0usize;
@@ -122,12 +121,30 @@ impl VFat {
 }
 
 impl<'a> FileSystem for &'a Shared<VFat> {
-    type File = ::traits::Dummy;
-    type Dir = ::traits::Dummy;
-    type Entry = ::traits::Dummy;
+    type File = File;
+    type Dir = Dir;
+    type Entry = Entry;
 
     fn open<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Entry> {
-        unimplemented!("FileSystem::open()")
+        let mut current_dir = Entry::Dir(Dir {
+            start_cluster: self.borrow().root_dir_cluster,
+            vfat: self.clone(),
+            metadata: Default::default(),
+        });
+
+        for file_component in path.as_ref().components().skip(1) {
+            if let Component::Normal(name) = file_component {
+                match traits::Entry::as_dir(&current_dir) {
+                    Some(ref dir) => {
+                        current_dir = dir.find(name)?;
+                    },
+                    None => {
+                        return Err(io::Error::new(io::ErrorKind::InvalidInput, "tried to traverse through file."));
+                    }
+                }
+            }
+        }
+        Ok(current_dir)
     }
 
     fn create_file<P: AsRef<Path>>(self, _path: P) -> io::Result<Self::File> {

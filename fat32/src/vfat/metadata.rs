@@ -29,6 +29,7 @@ pub struct Timestamp {
 #[derive(Default, Debug, Clone)]
 pub struct Metadata {
     pub name: String,
+    pub size: u32,
     pub attributes: Attributes,
     pub created: Timestamp,
     pub accessed: Date,

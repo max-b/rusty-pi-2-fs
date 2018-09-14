@@ -69,7 +69,17 @@ impl Dir {
     /// If `name` contains invalid UTF-8 characters, an error of `InvalidInput`
     /// is returned.
     pub fn find<P: AsRef<OsStr>>(&self, name: P) -> io::Result<Entry> {
-        unimplemented!("Dir::find()")
+        for entry in traits::Dir::entries(self)? {
+            let name = match name.as_ref().to_str() {
+                None => { return Err(io::Error::new(io::ErrorKind::InvalidInput, "name not valid utf8")) },
+                Some(name) => name
+            };
+
+            if traits::Entry::name(&entry).eq_ignore_ascii_case(name) {
+                return Ok(entry);
+            }
+        }
+        Err(io::Error::new(io::ErrorKind::NotFound, "Entry not found"))
     }
 }
 
@@ -109,8 +119,10 @@ impl Iterator for DirIter {
 
         let mut next = self.dir_entries.pop().unwrap();
         let mut name = String::new();
+        let mut is_lfn = false;
         let unknown = unsafe { next.unknown };
         while unknown._bytes[11] == 0xF {
+            is_lfn = true;
             let lfn = unsafe { next.long_filename };
             let mut buf = Vec::new();
             buf.extend_from_slice(&lfn.chars1);
@@ -141,9 +153,21 @@ impl Iterator for DirIter {
 
         let reg = unsafe { next.regular };
 
+        if !is_lfn {
+            match reg.extension.iter().position(|b| *b != 0x00) {
+                Some(pos) => {
+                    name.push_str(&String::from_utf8_lossy(&reg.extension)[..pos]);
+                },
+                None => {
+                    name.push_str(&String::from_utf8_lossy(&reg.extension)[..]);
+                }
+            }
+        }
+
         let start_cluster = ((reg.cluster_hi as u32) << 16) | (reg.cluster_lo as u32);
         let metadata = Metadata {
             name,
+            size: reg.size,
             attributes: reg.attributes,
             created: reg.created,
             accessed: reg.accessed,
@@ -156,11 +180,11 @@ impl Iterator for DirIter {
                 start_cluster: Cluster::from(start_cluster),
                 vfat: self.vfat.clone(),
             }),
-            _ => Entry::File(File {
+            _ => Entry::File(File::new(
                 metadata,
-                start_cluster: Cluster::from(start_cluster),
-                vfat: self.vfat.clone(),
-            }),
+                Cluster::from(start_cluster),
+                self.vfat.clone(),
+            )),
         })
     }
 }
@@ -173,6 +197,7 @@ impl traits::Dir for Dir {
         DirIter::new(&self)
     }
 }
+
 impl fmt::Debug for Dir {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Dir")

@@ -9,9 +9,32 @@ pub struct File {
     pub metadata: Metadata,
     pub start_cluster: Cluster,
     pub vfat: Shared<VFat>,
+    pub offset: u32,
+    data: Option<Vec<u8>>
 }
 
-// FIXME: Implement `traits::File` (and its supertraits) for `File`.
+impl File {
+    pub fn new(metadata: Metadata, start_cluster: Cluster, vfat: Shared<VFat>) -> File {
+        File {
+            metadata,
+            start_cluster,
+            vfat,
+            offset: 0u32,
+            data: None,
+        }
+    }
+
+    pub fn initialize(&mut self) -> io::Result<()> {
+        match self.data {
+            Some(_) => Ok(()),
+            None => {
+                let mut tmp_buf = Vec::new();
+                self.vfat.borrow_mut().read_chain(self.start_cluster, &mut tmp_buf)?;
+                Ok(())
+            }
+        }
+    }
+}
 
 impl io::Seek for File {
     /// Seek to offset `pos` in the file.
@@ -28,7 +51,17 @@ impl io::Seek for File {
     /// Seeking before the start of a file or beyond the end of the file results
     /// in an `InvalidInput` error.
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        unimplemented!("File::seek()")
+        let new_offset: i64 = match pos {
+            SeekFrom::Start(offset) =>  offset as i64,
+            SeekFrom::End(offset) => self.metadata.size as i64 - offset,
+            SeekFrom::Current(offset) => self.offset as i64 + offset
+        };
+
+        if new_offset < 0 || new_offset > self.offset as i64 {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "seek is invalid"));
+        }
+
+        Ok(self.offset as u64)
     }
 }
 
@@ -38,7 +71,7 @@ impl traits::File for File {
     }
 
     fn size(&self) -> u64 {
-        unimplemented!()
+        self.metadata.size as u64
     }
 }
 
@@ -54,6 +87,14 @@ impl io::Write for File {
 
 impl io::Read for File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        unimplemented!()
+
+        if self.data.is_none() {
+            self.initialize()?;
+        }
+
+        let num_bytes_to_read = min(buf.len(), (self.metadata.size - self.offset) as usize);
+
+        buf.copy_from_slice(&self.data.as_ref().unwrap()[self.offset as usize..self.offset as usize + num_bytes_to_read]);
+        Ok(num_bytes_to_read)
     }
 }
