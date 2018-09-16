@@ -2,10 +2,8 @@ extern crate rand;
 
 use std::io::prelude::*;
 use std::io::Cursor;
-use std::path::Path;
 
 use tests;
-use traits::*;
 use vfat::BiosParameterBlock;
 
 #[test]
