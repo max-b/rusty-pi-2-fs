@@ -211,7 +211,7 @@ fn hash_dir<T: Dir>(hash: &mut String, dir: T) -> Result<Vec<T::Entry>, ::std::f
 
 fn hash_dir_from<P: AsRef<Path>>(vfat: Shared<VFat>, path: P) -> String {
     let mut hash = String::new();
-    hash_dir(&mut hash, vfat.open_dir(path).expect("directory exists")).unwrap();
+    hash_dir(&mut hash, (&vfat).open_dir(path).expect("directory exists")).unwrap();
     hash
 }
 
@@ -238,7 +238,7 @@ fn hash_dir_recursive<P: AsRef<Path>>(
     use std::fmt::Write;
 
     let path = path.as_ref();
-    let dir = vfat.open_dir(path).expect("directory");
+    let dir = (&vfat).open_dir(path).expect("directory");
 
     write!(hash, "{}\n", path.display())?;
     let entries = hash_dir(hash, dir)?;
@@ -317,7 +317,7 @@ fn hash_files_recursive<P: AsRef<Path>>(
     path: P,
 ) -> ::std::fmt::Result {
     let path = path.as_ref();
-    let mut entries = vfat
+    let mut entries = (&vfat)
         .open_dir(path)
         .expect("directory")
         .entries()

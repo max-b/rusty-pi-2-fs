@@ -144,10 +144,10 @@ impl<'a> FileSystem for &'a Shared<VFat> {
     type Dir = Dir;
     type Entry = Entry;
 
-    fn open<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Entry> {
+    fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<Self::Entry> {
         let mut current_dir = Entry::Dir(Dir {
             start_cluster: self.borrow().root_dir_cluster,
-            vfat: self.clone(),
+            vfat: (*self).clone(),
             metadata: Default::default(),
         });
 
